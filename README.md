@@ -104,7 +104,7 @@ Activebar
 
 ## Screenshots
 
-![react-gantt](https://github.com/bjtqti/gantt/tree/master/20220818162735.jpg)
+![react-gantt](https://github.com/bjtqti/gantt/blob/master/20220818162735.jpg)
 
 ## Contributing
 
