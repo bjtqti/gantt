@@ -1,14 +1,32 @@
 {
   "name": "web-react-gantt",
   "private": false,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",
   "typings": "dist/index.d.ts",
+  "title": "Gantt Web component",
   "description": "Gantt chart react component",
+  "keywords": [
+    "gantt",
+    "schedule",
+    "components",
+    "frontend",
+    "react",
+    "react-component",
+    "ui"
+  ],
   "files": [
     "dist"
   ],
+  "homepage": "https://github.com/bjtqti/gantt",
+  "bugs": {
+    "url": "https://github.com/bjtqti/gantt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bjtqti/gantt"
+  },
   "scripts": {
     "start": "vite",
     "build": "npm run clean && npm run lint && vite build && rollup -c",
@@ -57,5 +75,9 @@
   ],
   "dependencies": {
     "styled-components": "^5"
-  }
+  },
+  "sideEffects": [
+    "dist/*",
+    "*.less"
+  ]
 }
