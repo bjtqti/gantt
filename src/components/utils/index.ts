@@ -1,14 +1,10 @@
+import { TaskType } from "../types";
 // 时间类型对就的单位价值
 export const UnitType = {
   hour: 60,
   day: 24,
   month: 30,
   year: 12,
-};
-
-// 时间不足10前面补0
-const formatTime = (num: number) => {
-  return num < 10 ? `0${num}` : num;
 };
 
 // 时间数据
@@ -30,31 +26,39 @@ export const getTimeline = (max: number) => {
   return arr;
 };
 
-// 分钟数换成时间轴坐标
-export const parseTimeToArray = (minute: number) => {
-  return minute / 60;
+// 获取进度条内置样式
+export const getTaskStyle = (type: TaskType) => {
+  const style = {
+    queue: {
+      background: "#b3e8fb",
+    },
+    break: {
+      background: "#e7c5af",
+    },
+    meal: {
+      background: "#f2e0a9",
+    },
+    meeting: {
+      background: "#f7b0ae",
+    },
+    training: {
+      background: "#8edfb9",
+    },
+    logout: {
+      background: "#e9c3ee",
+    },
+  };
+  return style[type] || {};
 };
 
-// 把坐标转换成分钟
-export const transferLineToMinute = (
-  position: number,
-  unit: number,
-  pice: number
-) => {
-  const colunm = Math.trunc(position / unit);
-  const minute = Math.trunc(60 / pice) * colunm;
-  return minute;
-};
-
-// 把坐标值转换时间格式
-export const transLineToTime = (
-  position: number,
-  unit: number,
-  pice: number
-) => {
-  const colunm = Math.trunc(position / unit);
-  const m = colunm % pice;
-  const hours = (colunm - m) / pice;
-  const minute = Math.trunc(60 / pice) * m;
-  return [hours, minute].map((v) => formatTime(v)).join(":");
+// 进度条类型
+export const getTaskType = (type: TaskType) => {
+  const task = new Map();
+  task.set("queue", "ON_QUEUE");
+  task.set("meal", "MEAL");
+  task.set("break", "BREAK");
+  task.set("meeting", "MEETING");
+  task.set("training", "TRAINING");
+  task.set("logout", "LOG_OUT");
+  return task.get(type);
 };

@@ -6,3 +6,11 @@ export declare type TimelineDataProps = {
 };
 
 export declare type TimelineType = "hour" | "day" | "month" | "year";
+
+export declare type TaskType =
+  | "queue"
+  | "break"
+  | "meal"
+  | "meeting"
+  | "training"
+  | "logout";

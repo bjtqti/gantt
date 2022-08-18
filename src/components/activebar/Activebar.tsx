@@ -1,7 +1,9 @@
 import React from "react";
 import styled from "styled-components";
 import { ConfigContext } from "../config-provider";
-import { UnitType } from "../utils";
+import { TaskType } from "../types";
+import { UnitType, getTaskStyle } from "../utils";
+
 const DIR_LEFT = "left";
 const DIR_RIGHT = "right";
 const DIR_MID = "middle";
@@ -14,7 +16,7 @@ const Box = styled.div<{ width: number }>`
   box-sizing: border-box;
 `;
 
-const BoxRow = styled.div<{ width: number; left: number }>`
+const BoxRow = styled.div<{ width: number; left: number; bgColor: string }>`
   position: absolute;
   top: 2px;
   left: ${(props) => props.left}px;
@@ -24,7 +26,7 @@ const BoxRow = styled.div<{ width: number; left: number }>`
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
-  background-color: #b3e8fb;
+  background-color: ${(props) => props.bgColor};
 `;
 
 const LabelBar = styled.div`
@@ -69,6 +71,7 @@ export interface ActivebarProps {
   start: number;
   end: number;
   name?: string;
+  task?: TaskType;
 }
 
 /**
@@ -77,11 +80,12 @@ export interface ActivebarProps {
  * @returns React.Node
  */
 const Activebar: React.FC<ActivebarProps> = (props) => {
-  const { name = "work", start, end } = props;
+  const { name = "work", start, end, task = "queue" } = props;
   const context = React.useContext(ConfigContext);
   //   console.log(context);
   const { scale, unit, type } = context;
-
+  // 进度条的样式
+  const [background, setBackground] = React.useState("inherit");
   // 是否允许拖动
   const [draggable, setDraggable] = React.useState(false);
   // 进度条的左边距
@@ -101,7 +105,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   // 计算位置
   const getPosition = (s: number) => {
     const pice = UnitType[type] / unit;
-    return s * scale * pice;
+    return (s * scale * pice) / UnitType[type];
   };
 
   // 初始化
@@ -110,15 +114,24 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     const width = getPosition(end - start);
     setPostionLeft(left);
     setPositionLong(width);
-
-    if (handRef.current) {
-      handRef.current.scrollIntoView();
-    }
   };
+
+  React.useEffect(() => {
+    const style = getTaskStyle(task);
+    setBackground(style.background);
+  }, [task]);
 
   React.useEffect(() => {
     init();
   }, [start, end, scale, unit, type]);
+
+  React.useEffect(() => {
+    if (handRef) {
+      setTimeout(() => {
+        handRef.current?.scrollIntoView();
+      }, 100);
+    }
+  }, [handRef]);
 
   // 从左边拉
   const onResizeLeftPull = (distance: number) => {
@@ -294,6 +307,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
         draggable={draggable}
         left={positionLeft}
         width={positionLong}
+        bgColor={background}
       >
         <ArrowLeft data-dir={DIR_LEFT} />
         <LabelBar data-dir={DIR_MID}>{name}</LabelBar>
