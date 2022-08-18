@@ -87,7 +87,18 @@ function App() {
 export default App;
 ```
 
-## Props
+## Develop
+
+```bash
+git clone git@github.com:bjtqti/gantt.git
+
+cd web-react-gannt
+npm install
+npm start
+
+```
+
+- after installed then vistor http://localhost:3000
 
 #### ReactGantt
 
