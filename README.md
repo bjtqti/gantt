@@ -24,6 +24,7 @@ Next generation frontend tooling
 - Dynamic bounds
 - zoom
 - drag
+- typescript support
 
 ## Demo
 
@@ -96,11 +97,24 @@ Activebar
 
 #### Timeline
 
-| Prop Name | Type |
+| Prop Name | Type
+
+width: number;
+unit: number;
+scale: number;
+type: TimelineType;
+data: TimelineDataProps[];
+scale?: number;
+type?: TimelineType;
+unit?: number;
 
 #### Activebar
 
-| Prop Name | Type | Behavior
+| Prop Name | Type
+
+start: number;
+end: number;
+name?: string;
 
 ## Screenshots
 
