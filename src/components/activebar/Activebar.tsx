@@ -76,14 +76,15 @@ const ArrowRight = styled(Arrow)`
 
 const TipBar = styled.div<{ top: number; left: number }>`
   position: absolute;
-  top: -30px;
-  left: 30%;
+  top: ${(p) => (p.top > 0 ? -30 : 0)}px;
+  left: ${(p) => p.left}px;
   z-index: 3;
   padding: 0 10px;
   min-width: 100px;
   background-color: white;
   border: 1px solid #e8e8e8;
   border-radius: 4px;
+  font-size: 12px;
   &::after {
     content: "";
     position: absolute;
@@ -150,7 +151,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
 
   const [time, setTime] = React.useState("");
 
-  // 当前选择的活动
+  // 当前活动悬浮提示
   const [activeItem, setActiveItem] = React.useState<EventRow>({
     x: 0,
     y: 0,
@@ -367,7 +368,12 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
 
   // 鼠标进入
   const onMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-    setActiveItem({ x: e.pageX, y: e.pageY, keep: true });
+    // console.log(e.pageX, e.pageY);
+    const target = e.target as HTMLDivElement;
+    const rec = target.getBoundingClientRect();
+    const x = e.pageX - rec.left;
+    const y = rec.top;
+    setActiveItem({ x, y, keep: true });
   };
 
   const onMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -376,7 +382,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
 
   // 生成对应的活动条
   const renderActiveBar = () => {
-    console.log(task, queue);
+    // console.log(task, queue);
     const flex = latestStart - earliestStart;
     const width = getPosition(flex);
     if (flex > 0 && flexible) {
