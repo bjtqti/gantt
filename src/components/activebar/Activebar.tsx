@@ -2,7 +2,7 @@ import React from "react";
 import styled from "styled-components";
 import { ConfigContext } from "../config-provider";
 import { TaskType } from "../types";
-import { UnitType, getTaskStyle } from "../utils";
+import { getTaskStyle, getBarTime, queue } from "../utils";
 
 const DIR_LEFT = "left";
 const DIR_RIGHT = "right";
@@ -23,19 +23,35 @@ const BoxRow = styled.div<{ width: number; left: number; bgColor: string }>`
   z-index: 3;
   width: ${(props) => props.width}px;
   height: 25px;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
   background-color: ${(props) => props.bgColor};
 `;
 
 const LabelBar = styled.div`
+  position: relative;
   font-size: 12px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   user-select: none;
+`;
+
+const BarTR = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const BarTd = styled.div<{ width: number }>`
+  width: ${(props) => props.width}px;
+  height: 20px;
+  border: 1px solid #e8e8e8;
+  background-color: white;
+`;
+
+const BarTn = styled.div`
+  flex: 1;
+  text-align: center;
 `;
 
 const Arrow = styled.div`
@@ -45,7 +61,7 @@ const Arrow = styled.div`
   width: 5px;
   height: 100%;
   &:hover {
-    background-color: #9410c3;
+    background-color: #b2c5fe;
     cursor: ew-resize;
   }
 `;
@@ -56,6 +72,30 @@ const ArrowLeft = styled(Arrow)`
 
 const ArrowRight = styled(Arrow)`
   right: 0;
+`;
+
+const TipBar = styled.div<{ top: number; left: number }>`
+  position: absolute;
+  top: -30px;
+  left: 30%;
+  z-index: 3;
+  padding: 0 10px;
+  min-width: 100px;
+  background-color: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 10%;
+    bottom: -5px;
+    z-index: 2;
+    width: 0;
+    height: 0;
+    border-top: 5px solid #777575;
+    border-right: 5px solid transparent;
+    border-left: 5px solid transparent;
+  }
 `;
 
 // 事件数据
@@ -72,6 +112,10 @@ export interface ActivebarProps {
   end: number;
   name?: string;
   task?: TaskType;
+  focus?: boolean;
+  earliestStart?: number;
+  latestStart?: number;
+  flexible?: boolean;
 }
 
 /**
@@ -80,20 +124,38 @@ export interface ActivebarProps {
  * @returns React.Node
  */
 const Activebar: React.FC<ActivebarProps> = (props) => {
-  const { name = "work", start, end, task = "queue" } = props;
+  const {
+    start,
+    end,
+    name = "",
+    task = "queue",
+    focus = false,
+    earliestStart = 0,
+    latestStart = 0,
+    flexible = false,
+  } = props;
   const context = React.useContext(ConfigContext);
   //   console.log(context);
-  const { scale, unit, type } = context;
+  const { scale, unit } = context;
   // 进度条的样式
   const [background, setBackground] = React.useState("inherit");
   // 是否允许拖动
-  const [draggable, setDraggable] = React.useState(false);
+  // const [draggable, setDraggable] = React.useState(false);
   // 进度条的左边距
   const [positionLeft, setPostionLeft] = React.useState(scale);
   // 进度条的长度
-  const [positionLong, setPositionLong] = React.useState(300);
+  const [positionLong, setPositionLong] = React.useState(0);
   // 进度条的光标样式
   const [cursor, setCursor] = React.useState("default");
+
+  const [time, setTime] = React.useState("");
+
+  // 当前选择的活动
+  const [activeItem, setActiveItem] = React.useState<EventRow>({
+    x: 0,
+    y: 0,
+    keep: false,
+  });
 
   // 包装容器
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -113,19 +175,34 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   }, [task]);
 
   React.useEffect(() => {
+    const flex = latestStart - earliestStart;
     const left = getPosition(start);
-    const width = getPosition(end - start);
+    const width = getPosition(end - start + flex);
+    const st = getBarTime(start, "hour");
+    const et = getBarTime(end, "hour");
     setPostionLeft(left);
     setPositionLong(width);
-  }, [start, end, scale, unit, type]);
+    setTime(`${st} - ${et}`);
+  }, [start, end, scale, unit]);
 
   React.useEffect(() => {
-    if (handRef) {
+    if (handRef && focus) {
       setTimeout(() => {
         handRef.current?.scrollIntoView();
       }, 100);
     }
-  }, [handRef]);
+  }, [handRef, focus]);
+
+  React.useEffect(() => {
+    // 拖动在进度条之外释放
+    const wrap = rootRef?.current?.parentNode as HTMLElement;
+    if (wrap) {
+      wrap.addEventListener("mouseup", onMouseUp, false);
+    }
+    return () => {
+      wrap.removeEventListener("mouseup", onMouseUp, false);
+    };
+  }, [rootRef]);
 
   // 从左边拉
   const onResizeLeftPull = (distance: number) => {
@@ -243,7 +320,6 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   // 鼠标移动
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-
     // 非按住鼠标的情况下更新光标
     if (!evtRef.current.keep) {
       //   console.log(target.dataset.dir, "**");
@@ -271,6 +347,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
       y: e.pageY,
       keep: true,
     };
+    setActiveItem({ x: 0, y: 0, keep: false });
   };
 
   // 释放鼠标
@@ -283,7 +360,34 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
       action: "",
       width: 0,
     };
+
     if (keep) {
+    }
+  };
+
+  // 鼠标进入
+  const onMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    setActiveItem({ x: e.pageX, y: e.pageY, keep: true });
+  };
+
+  const onMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    setActiveItem({ x: 0, y: 0, keep: false });
+  };
+
+  // 生成对应的活动条
+  const renderActiveBar = () => {
+    console.log(task, queue);
+    const flex = latestStart - earliestStart;
+    const width = getPosition(flex);
+    if (flex > 0 && flexible) {
+      return (
+        <BarTR>
+          <BarTd width={width}></BarTd>
+          <BarTn>{name}</BarTn>
+        </BarTR>
+      );
+    } else {
+      return <span>{name}</span>;
     }
   };
 
@@ -298,14 +402,23 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     >
       <BoxRow
         ref={handRef}
-        draggable={draggable}
+        draggable={false}
         left={positionLeft}
         width={positionLong}
         bgColor={background}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
       >
         <ArrowLeft data-dir={DIR_LEFT} />
-        <LabelBar data-dir={DIR_MID}>{name}</LabelBar>
+        <LabelBar data-dir={DIR_MID} data-task={task}>
+          {renderActiveBar()}
+        </LabelBar>
         <ArrowRight data-dir={DIR_RIGHT} />
+        {activeItem.keep && (
+          <TipBar left={activeItem.x} top={activeItem.y}>
+            {time}
+          </TipBar>
+        )}
       </BoxRow>
     </Box>
   );

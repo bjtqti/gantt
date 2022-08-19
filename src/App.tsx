@@ -28,9 +28,23 @@ function App() {
         <div className="right">
           <ConfigContext.Provider value={{ unit, type, scale, width }}>
             <Timeline data={data} />
-            <Activebar name={"活动中"} start={480} end={1080} />
+            <Activebar
+              name={"在线"}
+              start={480}
+              end={1080}
+              task="queue"
+              focus={true}
+            />
             <Activebar name={"休息"} start={780} end={810} task="break" />
-            <Activebar name={"用餐"} start={720} end={780} task="meal" />
+            <Activebar
+              name={"用餐"}
+              start={720}
+              end={780}
+              earliestStart={720}
+              latestStart={750}
+              flexible={true}
+              task="meal"
+            />
             <Activebar name={"会议"} start={840} end={960} task="meeting" />
             <Activebar name={"培训"} start={840} end={1020} task="training" />
           </ConfigContext.Provider>

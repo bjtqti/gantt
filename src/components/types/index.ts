@@ -13,4 +13,5 @@ export declare type TaskType =
   | "meal"
   | "meeting"
   | "training"
-  | "logout";
+  | "logout"
+  | "reserved";
