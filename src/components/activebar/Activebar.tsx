@@ -104,16 +104,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
 
   // 计算位置
   const getPosition = (s: number) => {
-    const pice = UnitType[type] / unit;
-    return (s * scale * pice) / UnitType[type];
-  };
-
-  // 初始化
-  const init = () => {
-    const left = getPosition(start);
-    const width = getPosition(end - start);
-    setPostionLeft(left);
-    setPositionLong(width);
+    return (s / unit) * scale;
   };
 
   React.useEffect(() => {
@@ -122,7 +113,10 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   }, [task]);
 
   React.useEffect(() => {
-    init();
+    const left = getPosition(start);
+    const width = getPosition(end - start);
+    setPostionLeft(left);
+    setPositionLong(width);
   }, [start, end, scale, unit, type]);
 
   React.useEffect(() => {
