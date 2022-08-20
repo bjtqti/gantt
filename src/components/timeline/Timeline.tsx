@@ -20,12 +20,13 @@ const NavUl = styled.ul`
   list-style: none;
 `;
 
-const NavLi = styled.li<{ pice: number; scale: number }>`
+const NavLi = styled.li<{ pice: number; scale: number; next: boolean }>`
   position: relative;
   display: flex;
   flex-direction: column;
   width: ${(props) => props.pice * props.scale}px;
   text-align: left;
+  background-color: ${(p) => (p.next ? "#ac69d9" : "inherit")};
 `;
 
 const NavTxt = styled.div`
@@ -93,7 +94,7 @@ const Timeline: React.FC<TimelineProps> = (props) => {
     return (
       <NavUl>
         {data.map((item) => (
-          <NavLi pice={pice} scale={scale} key={item.value}>
+          <NavLi pice={pice} scale={scale} key={item.value} next={item.isNext}>
             <NavTxt>{item.label}</NavTxt>
             {markNodes}
           </NavLi>
