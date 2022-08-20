@@ -1,13 +1,15 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { ThemeProvider } from "styled-components";
 import { ConfigContext } from "../config-provider";
 import { TaskType } from "../types";
-import { getTaskStyle, getBarTime, queue } from "../utils";
+import { getBarTime, Themes } from "../utils";
+import Tooltip from "../tooltip/Tooltip";
 
 const DIR_LEFT = "left";
 const DIR_RIGHT = "right";
 const DIR_MID = "middle";
 
+// 占一行的包装容器
 const Box = styled.div<{ width: number }>`
   position: relative;
   width: ${(props) => props.width}px;
@@ -16,18 +18,29 @@ const Box = styled.div<{ width: number }>`
   box-sizing: border-box;
 `;
 
-const BoxRow = styled.div<{ width: number; left: number; bgColor: string }>`
+// 进度条
+const Bar = styled.div<{ width: number; left: number }>`
   position: absolute;
   top: 2px;
   left: ${(props) => props.left}px;
   z-index: 3;
   width: ${(props) => props.width}px;
   height: 25px;
-  background-color: ${(props) => props.bgColor};
+  background-color: ${(props) => props.theme.main};
 `;
 
+// We are passing a default theme for Buttons that arent wrapped in the ThemeProvider
+Bar.defaultProps = {
+  theme: {
+    main: "palevioletred",
+    dark: "gray",
+  },
+};
+
+// 任务条主体
 const LabelBar = styled.div`
   position: relative;
+  height: 100%;
   font-size: 12px;
   text-align: center;
   overflow: hidden;
@@ -35,25 +48,27 @@ const LabelBar = styled.div`
   white-space: nowrap;
   user-select: none;
 `;
-
+// 灵活配置区间容器
 const BarTR = styled.div`
-  position: relative;
   display: flex;
   align-items: center;
+  height: 100%;
+  pointer-events: none;
 `;
-
-const BarTd = styled.div<{ width: number }>`
+// 灵活配置区单元格
+const BarTd = styled.div<{ width: number; scale: number }>`
+  display: flex;
+  flex-wrap: nowrap;
   width: ${(props) => props.width}px;
-  height: 20px;
+  height: 100%;
   border: 1px solid #e8e8e8;
   background-color: white;
+  box-sizing: border-box;
+  & > div {
+    border-left: 1px solid #e8e8e8;
+  }
 `;
-
-const BarTn = styled.div`
-  flex: 1;
-  text-align: center;
-`;
-
+// 两端剪头区
 const Arrow = styled.div`
   position: absolute;
   top: 0;
@@ -61,42 +76,26 @@ const Arrow = styled.div`
   width: 5px;
   height: 100%;
   &:hover {
-    background-color: #b2c5fe;
+    background-color: ${(p) => p.theme.dark};
     cursor: ew-resize;
   }
 `;
-
+// 左边箭头
 const ArrowLeft = styled(Arrow)`
   left: 0;
 `;
-
+// 右边箭头
 const ArrowRight = styled(Arrow)`
   right: 0;
 `;
-
-const TipBar = styled.div<{ top: number; left: number }>`
-  position: absolute;
-  top: ${(p) => (p.top > 0 ? -30 : 0)}px;
-  left: ${(p) => p.left}px;
-  z-index: 3;
+// 悬浮提示层
+const TipBar = styled.div`
   padding: 0 10px;
   min-width: 100px;
   background-color: white;
   border: 1px solid #e8e8e8;
   border-radius: 4px;
   font-size: 12px;
-  &::after {
-    content: "";
-    position: absolute;
-    left: 10%;
-    bottom: -5px;
-    z-index: 2;
-    width: 0;
-    height: 0;
-    border-top: 5px solid #777575;
-    border-right: 5px solid transparent;
-    border-left: 5px solid transparent;
-  }
 `;
 
 // 事件数据
@@ -108,6 +107,7 @@ export declare type EventRow = {
   width?: number;
 };
 
+// 活动数据
 export interface ActivebarProps {
   start: number;
   end: number;
@@ -117,6 +117,8 @@ export interface ActivebarProps {
   earliestStart?: number;
   latestStart?: number;
   flexible?: boolean;
+  duration?: number;
+  click?: (e?: any) => void;
 }
 
 /**
@@ -134,22 +136,20 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     earliestStart = 0,
     latestStart = 0,
     flexible = false,
+    duration = 0,
   } = props;
   const context = React.useContext(ConfigContext);
   //   console.log(context);
   const { scale, unit } = context;
-  // 进度条的样式
-  const [background, setBackground] = React.useState("inherit");
-  // 是否允许拖动
-  // const [draggable, setDraggable] = React.useState(false);
+
   // 进度条的左边距
   const [positionLeft, setPostionLeft] = React.useState(scale);
   // 进度条的长度
   const [positionLong, setPositionLong] = React.useState(0);
   // 进度条的光标样式
   const [cursor, setCursor] = React.useState("default");
-
-  const [time, setTime] = React.useState("");
+  // 区间提示内容
+  const [tips, setTips] = React.useState("");
 
   // 当前活动悬浮提示
   const [activeItem, setActiveItem] = React.useState<EventRow>({
@@ -165,25 +165,19 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   // 事件相关数据
   const evtRef = React.useRef<EventRow>({ x: 0, y: 0, keep: false });
 
-  // 计算位置
-  const getPosition = (s: number) => {
-    return (s / unit) * scale;
+  // 时间转换成长度
+  const getPosition = (minute: number) => {
+    return (minute / unit) * scale;
   };
 
   React.useEffect(() => {
-    const style = getTaskStyle(task);
-    setBackground(style.background);
-  }, [task]);
-
-  React.useEffect(() => {
-    const flex = latestStart - earliestStart;
     const left = getPosition(start);
-    const width = getPosition(end - start + flex);
+    const width = getPosition(end - start + duration);
     const st = getBarTime(start, "hour");
     const et = getBarTime(end, "hour");
     setPostionLeft(left);
     setPositionLong(width);
-    setTime(`${st} - ${et}`);
+    setTips(`${st} - ${et}`);
   }, [start, end, scale, unit]);
 
   React.useEffect(() => {
@@ -214,7 +208,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
       setPostionLeft(left);
       setPositionLong(width);
       //   debunceLeft();
-      console.log("<---left **", left);
+      // console.log("<---left **", left);
     }
   };
 
@@ -230,7 +224,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     setPostionLeft(left);
     setPositionLong(width);
     // debunceLeft();
-    console.log("left --> **");
+    // console.log("left --> **");
   };
 
   // 从右边拉
@@ -241,7 +235,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     }
     setPositionLong(width);
     // debunceRight();
-    console.log("<--- right");
+    // console.log("<--- right");
   };
 
   // 从右边推
@@ -253,7 +247,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     }
     setPositionLong(width);
     // debunceRight();
-    console.log("right--->");
+    // console.log("right--->");
   };
 
   // 改变活动区大小
@@ -323,7 +317,6 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     const target = e.target as HTMLDivElement;
     // 非按住鼠标的情况下更新光标
     if (!evtRef.current.keep) {
-      //   console.log(target.dataset.dir, "**");
       // 更新光标状态
       updateCursor(target.dataset.dir);
     } else {
@@ -366,35 +359,53 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     }
   };
 
-  // 鼠标进入
+  // 鼠标进入进提示
   const onMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-    // console.log(e.pageX, e.pageY);
-    const target = e.target as HTMLDivElement;
-    const rec = target.getBoundingClientRect();
-    const x = e.pageX - rec.left;
-    const y = rec.top;
+    let x = e.pageX;
+    let y = e.pageY - 30;
     setActiveItem({ x, y, keep: true });
   };
 
-  const onMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+  // 鼠标移出时关闭提示
+  const onMouseLeave = () => {
     setActiveItem({ x: 0, y: 0, keep: false });
   };
 
-  // 生成对应的活动条
-  const renderActiveBar = () => {
+  // 点击进度条
+  const handleClickBar = () => {
+    if (props.click) {
+      const { click, ...rest } = props;
+      const start = (positionLeft / scale) * unit;
+      const end = ((positionLong + positionLeft) / scale) * unit;
+      props.click({ ...rest, start, end });
+    }
+  };
+
+  // 生成任务条
+  const renderTaskBar = () => {
     // console.log(task, queue);
-    const flex = latestStart - earliestStart;
-    const width = getPosition(flex);
-    if (flex > 0 && flexible) {
+
+    if (flexible && duration > 0) {
+      const width = getPosition(duration);
+      const rest = width % scale;
+      const pice = (width - rest) / scale;
+      const arr = new Array(pice).fill(scale);
+      // 余下的分钟数做一个格子
+      if (rest > 0) {
+        arr.push(rest);
+      }
       return (
-        <BarTR>
-          <BarTd width={width}></BarTd>
-          <BarTn>{name}</BarTn>
+        <BarTR onClick={handleClickBar}>
+          <BarTd width={width} scale={scale}>
+            {arr.map((v, i) => (
+              <div key={i} style={{ width: v }}></div>
+            ))}
+          </BarTd>
+          <div style={{ flex: 1 }}>{name}</div>
         </BarTR>
       );
-    } else {
-      return <span>{name}</span>;
     }
+    return name;
   };
 
   return (
@@ -406,26 +417,27 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
       onMouseUp={onMouseUp}
       style={{ cursor }}
     >
-      <BoxRow
-        ref={handRef}
-        draggable={false}
-        left={positionLeft}
-        width={positionLong}
-        bgColor={background}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        <ArrowLeft data-dir={DIR_LEFT} />
-        <LabelBar data-dir={DIR_MID} data-task={task}>
-          {renderActiveBar()}
-        </LabelBar>
-        <ArrowRight data-dir={DIR_RIGHT} />
-        {activeItem.keep && (
-          <TipBar left={activeItem.x} top={activeItem.y}>
-            {time}
-          </TipBar>
-        )}
-      </BoxRow>
+      <ThemeProvider theme={Themes[task]}>
+        <Bar
+          draggable={false}
+          ref={handRef}
+          left={positionLeft}
+          width={positionLong}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        >
+          <ArrowLeft data-dir={DIR_LEFT} />
+          <LabelBar data-dir={DIR_MID} data-task={task}>
+            {renderTaskBar()}
+          </LabelBar>
+          <ArrowRight data-dir={DIR_RIGHT} />
+          {activeItem.keep && (
+            <Tooltip top={activeItem.y} left={activeItem.x}>
+              <TipBar>{tips}</TipBar>
+            </Tooltip>
+          )}
+        </Bar>
+      </ThemeProvider>
     </Box>
   );
 };

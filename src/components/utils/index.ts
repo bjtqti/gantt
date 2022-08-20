@@ -26,34 +26,6 @@ export const getTimeline = (max: number) => {
   return arr;
 };
 
-// 获取进度条内置样式
-export const getTaskStyle = (type: TaskType) => {
-  const style = {
-    queue: {
-      background: "#b3e8fb",
-    },
-    break: {
-      background: "#e7c5af",
-    },
-    meal: {
-      background: "#f2e0a9",
-    },
-    meeting: {
-      background: "#f7b0ae",
-    },
-    training: {
-      background: "#8edfb9",
-    },
-    logout: {
-      background: "#e9c3ee",
-    },
-    reserved: {
-      background: "#f5f5f5",
-    },
-  };
-  return style[type] || {};
-};
-
 export const queue = "queue";
 export const meal = "meal";
 export const rest = "break";
@@ -85,4 +57,53 @@ export const getBarTime = (value: number, type: TimelineType) => {
   const H = (value - M) / unit;
   const arr = [H, M].map((v) => formatTime(v));
   return arr.join(":");
+};
+
+/**
+ * @desc 函数节流:连续触发事件但是在 n 秒中只执行一次函数
+ * @param func 函数
+ * @param wait 延迟执行毫秒数，控制频率
+ */
+export const throttle = (func: Function, wait: number) => {
+  let timeout: number | null;
+  return function (this: any, ...args: any[]) {
+    if (!timeout) {
+      timeout = setTimeout(() => {
+        timeout = null;
+        func.apply(this, args);
+      }, wait);
+    }
+  };
+};
+
+// 进度条样式
+export const Themes = {
+  queue: {
+    main: "#b3e8fb",
+    dark: "#b2c5fe",
+  },
+  break: {
+    main: "#e7c5af",
+    dark: "#8d786a",
+  },
+  meal: {
+    main: "#f2e0a9",
+    dark: "#a5966b",
+  },
+  meeting: {
+    main: "#f7b0ae",
+    dark: "#936261",
+  },
+  training: {
+    main: "#8edfb9",
+    dark: "#52846d",
+  },
+  logout: {
+    main: "#e9c3ee",
+    dark: "black",
+  },
+  reserved: {
+    main: "#f5f5f5",
+    dark: "green",
+  },
 };

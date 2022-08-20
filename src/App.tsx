@@ -11,7 +11,9 @@ function App() {
   const type = "hour";
   const pice = UnitType[type] / unit;
   const width = data.length * scale * pice;
-
+  const onClick = (e: any) => {
+    console.log(e);
+  };
   return (
     <div className="App">
       <div className="flex">
@@ -41,8 +43,10 @@ function App() {
               start={720}
               end={780}
               earliestStart={720}
-              latestStart={750}
+              latestStart={740}
               flexible={true}
+              duration={45}
+              click={onClick}
               task="meal"
             />
             <Activebar name={"会议"} start={840} end={960} task="meeting" />
