@@ -2,7 +2,7 @@ import React from "react";
 import styled, { ThemeProvider } from "styled-components";
 import { ConfigContext } from "../config-provider";
 import { TaskType } from "../types";
-import { getBarTime, Themes } from "../utils";
+import { getBarTime, Themes, timeToLine, lineToTime } from "../utils";
 import Tooltip from "../tooltip/Tooltip";
 
 const DIR_LEFT = "left";
@@ -109,16 +109,16 @@ export declare type EventRow = {
 
 // 活动数据
 export interface ActivebarProps {
+  id?: string;
   start: number;
   end: number;
   name?: string;
   task?: TaskType;
   focus?: boolean;
-  earliestStart?: number;
-  latestStart?: number;
   flexible?: boolean;
   duration?: number;
   click?: (e?: any) => void;
+  moved?: (e?: any) => void;
 }
 
 /**
@@ -133,8 +133,6 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
     name = "",
     task = "queue",
     focus = false,
-    earliestStart = 0,
-    latestStart = 0,
     flexible = false,
     duration = 0,
   } = props;
@@ -165,14 +163,9 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   // 事件相关数据
   const evtRef = React.useRef<EventRow>({ x: 0, y: 0, keep: false });
 
-  // 时间转换成长度
-  const getPosition = (minute: number) => {
-    return (minute / unit) * scale;
-  };
-
   React.useEffect(() => {
-    const left = getPosition(start);
-    const width = getPosition(end - start + duration);
+    const left = timeToLine(start, unit, scale);
+    const width = timeToLine(end - start + duration, unit, scale);
     const st = getBarTime(start, "hour");
     const et = getBarTime(end, "hour");
     setPostionLeft(left);
@@ -355,7 +348,13 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
       width: 0,
     };
 
-    if (keep) {
+    if (keep && props.moved) {
+      props.moved({
+        end: lineToTime(positionLong, unit, scale),
+        start: timeToLine(positionLeft, unit, scale),
+        id: props.id,
+        duration,
+      });
     }
   };
 
@@ -374,19 +373,20 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
   // 点击进度条
   const handleClickBar = () => {
     if (props.click) {
-      const { click, ...rest } = props;
-      const start = (positionLeft / scale) * unit;
-      const end = ((positionLong + positionLeft) / scale) * unit;
-      props.click({ ...rest, start, end });
+      props.click({
+        start: lineToTime(positionLeft, unit, scale),
+        end: lineToTime(positionLong, unit, scale),
+        id: props.id,
+        duration,
+      });
     }
   };
 
   // 生成任务条
   const renderTaskBar = () => {
     // console.log(task, queue);
-
     if (flexible && duration > 0) {
-      const width = getPosition(duration);
+      const width = timeToLine(duration, unit, scale);
       const rest = width % scale;
       const pice = (width - rest) / scale;
       const arr = new Array(pice).fill(scale);
@@ -395,7 +395,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
         arr.push(rest);
       }
       return (
-        <BarTR onClick={handleClickBar}>
+        <BarTR>
           <BarTd width={width} scale={scale}>
             {arr.map((v, i) => (
               <div key={i} style={{ width: v }}></div>
@@ -425,6 +425,7 @@ const Activebar: React.FC<ActivebarProps> = (props) => {
           width={positionLong}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
+          onClick={handleClickBar}
         >
           <ArrowLeft data-dir={DIR_LEFT} />
           <LabelBar data-dir={DIR_MID} data-task={task}>

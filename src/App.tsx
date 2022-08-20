@@ -37,20 +37,36 @@ function App() {
               task="queue"
               focus={true}
             />
-            <Activebar name={"休息"} start={780} end={810} task="break" />
+            <Activebar
+              name={"休息"}
+              start={780}
+              end={810}
+              task="break"
+              click={onClick}
+            />
             <Activebar
               name={"用餐"}
               start={720}
               end={780}
-              earliestStart={720}
-              latestStart={740}
               flexible={true}
               duration={45}
               click={onClick}
               task="meal"
             />
-            <Activebar name={"会议"} start={840} end={960} task="meeting" />
-            <Activebar name={"培训"} start={840} end={1020} task="training" />
+            <Activebar
+              name={"会议"}
+              start={840}
+              end={960}
+              task="meeting"
+              click={onClick}
+            />
+            <Activebar
+              name={"培训"}
+              start={840}
+              end={1020}
+              task="training"
+              click={onClick}
+            />
           </ConfigContext.Provider>
         </div>
       </div>
